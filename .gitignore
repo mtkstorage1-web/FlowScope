@@ -1,0 +1,44 @@
+# ---------- macOS ----------
+.DS_Store
+._*
+
+# ---------- Xcode / iOS ----------
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+**/xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage (not used today, ignored pre-emptively)
+Pods/
+Carthage/Build/
+
+# ---------- Android / Gradle ----------
+.gradle/
+local.properties
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Gradle build outputs (the APK ships as a GitHub Release asset instead)
+FlowScopeAndroid/build/
+FlowScopeAndroid/app/build/
+**/build/
+
+# ---------- IDE ----------
+.idea/
+*.log
+
+# ---------- Repo housekeeping ----------
+# Pre-monorepo history of the iOS project, kept locally only.
+.git-backup-pre-monorepo/
