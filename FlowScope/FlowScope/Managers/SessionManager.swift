@@ -1,8 +1,12 @@
 import SwiftUI
 import Combine
-import ActivityKit
 import WidgetKit
 import OSLog
+
+#if os(iOS)
+import ActivityKit
+import UIKit
+#endif
 
 private let log = Logger(subsystem: "mtk.FlowScope", category: "SessionManager")
 
@@ -37,8 +41,10 @@ final class SessionManager: ObservableObject {
     private var sessionID = UUID()
 
     private var ticker: Timer?
+    #if os(iOS)
     private var liveActivity: Activity<TimerAttributes>?
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    #endif
     /// Last whole second pushed to the Live Activity (prevents update spam).
     private var lastPushedSecond: Int = -1
     /// Last cycle index seen, so we can fire a one-shot completion moment.
@@ -49,7 +55,9 @@ final class SessionManager: ObservableObject {
     // MARK: - Init
 
     init() {
+        #if os(iOS)
         liveActivitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        #endif
         restoreIfNeeded()
         if currentSession == nil {
             // Nothing to resume — drop any Live Activity from a previous launch.
@@ -97,9 +105,11 @@ final class SessionManager: ObservableObject {
     }
 
     /// Adopts an existing Live Activity left over from a previous launch.
+    #if os(iOS)
     private func reattachLiveActivity() {
         liveActivity = Activity<TimerAttributes>.activities.first
     }
+    #endif
 
     // MARK: - Session Lifecycle
 
@@ -334,6 +344,12 @@ final class SessionManager: ObservableObject {
     }
 
     // MARK: - Live Activities
+    //
+    // iOS-only: a Mac has no Lock Screen or Dynamic Island, and the app is
+    // never suspended out from under a running session, so the whole
+    // Live-Activity/background-task apparatus compiles out below and the
+    // no-op stubs at the end of this section keep every call site unchanged.
+    #if os(iOS)
 
     private func contentState() -> TimerAttributes.ContentState {
         TimerAttributes.ContentState(
@@ -430,6 +446,19 @@ final class SessionManager: ObservableObject {
         UIApplication.shared.endBackgroundTask(backgroundTaskID)
         backgroundTaskID = .invalid
     }
+
+    #else
+
+    // macOS stubs — same names, nothing to do.
+    func ensureLiveActivity() {}
+    private func startLiveActivity() {}
+    private func endOrphanedActivities() {}
+    private func updateLiveActivity(force: Bool = false) {}
+    private func endLiveActivity() {}
+    private func beginBackgroundTask() {}
+    private func endBackgroundTask() {}
+
+    #endif
 
     // MARK: - Helpers
 

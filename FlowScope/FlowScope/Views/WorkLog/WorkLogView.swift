@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkLogView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var theme: AppThemeManager
     @State private var selectedSession: Session?
     @State private var showSessionDetail = false
     @State private var searchText = ""
@@ -39,7 +40,7 @@ struct WorkLogView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Stats Header
                 StatsHeaderView(sessions: filteredSessions)
@@ -89,9 +90,11 @@ struct WorkLogView: View {
                 }
             }
             .navigationTitle("Work Log")
-            .navigationBarTitleDisplayMode(.large)
+            .platformNavigationTitleMode(.large)
             .sheet(item: $selectedSession) { session in
                 SessionGraphView(session: session)
+                    .environmentObject(dataManager)
+                    .environmentObject(theme)
             }
             .onAppear {
                 dataManager.fetchAllSessions()
@@ -204,17 +207,6 @@ struct WorkLogCard: View {
         return formatter
     }
     
-    private var durationString: String {
-        let minutes = session.durationInMinutes
-        let hours = minutes / 60
-        let remainingMinutes = minutes % 60
-        
-        if hours > 0 {
-            return "\(hours)h \(remainingMinutes)m"
-        }
-        return "\(minutes)m"
-    }
-    
     private var moodColor: Color {
         let mood = session.averageMood
         if mood >= 70 { return .green }
@@ -227,10 +219,10 @@ struct WorkLogCard: View {
             // Top Row: Name and Category
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(session.name)
+                    Text(session.displayName)
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
+
                     HStack(spacing: 4) {
                         Image(systemName: "tag")
                             .font(.caption2)
@@ -276,7 +268,7 @@ struct WorkLogCard: View {
                     Image(systemName: "timer")
                         .font(.caption)
                         .foregroundColor(theme.accentColor)
-                    Text(durationString)
+                    Text(session.durationString)
                         .font(.caption)
                         .fontWeight(.medium)
                 }
@@ -295,7 +287,7 @@ struct WorkLogCard: View {
             if !session.moodLogs.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(session.moodLogs.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { log in
+                        ForEach(session.sortedMoodLogs, id: \.id) { log in
                             MoodLogChip(log: log)
                         }
                     }

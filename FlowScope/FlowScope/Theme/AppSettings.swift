@@ -122,6 +122,15 @@ final class AppSettings: ObservableObject {
     @AppStorage("settings.keepScreenAwake") var keepScreenAwake = false { didSet { objectWillChange.send() } }
     @AppStorage("settings.liveActivityEnabled") var liveActivityEnabled = true { didSet { objectWillChange.send() } }
     @AppStorage("settings.hideStatusBar") var hideStatusBar = true { didSet { objectWillChange.send() } }
+    /// Strips the running timer back to the clock, ring, emblem and mood
+    /// logging — the cycle readout and transport controls step aside.
+    @AppStorage("settings.minimalSession") var minimalSession = false { didSet { objectWillChange.send() } }
+    /// Shows the countdown inside the ring. What it counts down to follows
+    /// `ringMode`: time left in the current cycle, or time left of the goal.
+    ///
+    /// Off by default — the big digits already count *up*, and running a
+    /// count-down alongside them puts two live clocks on one screen.
+    @AppStorage("settings.showGoalTimer") var showGoalTimer = false { didSet { objectWillChange.send() } }
 
     private init() {}
 
@@ -168,5 +177,7 @@ final class AppSettings: ObservableObject {
         keepScreenAwake = false
         liveActivityEnabled = true
         hideStatusBar = true
+        minimalSession = false
+        showGoalTimer = false
     }
 }

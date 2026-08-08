@@ -1,5 +1,9 @@
-import ActivityKit
 import Foundation
+
+// Live Activities are an iOS feature — there is no Dynamic Island or Lock
+// Screen on a Mac, so the whole attribute set compiles out there.
+#if os(iOS)
+import ActivityKit
 
 struct TimerAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
@@ -14,3 +18,4 @@ struct TimerAttributes: ActivityAttributes {
         var startDate: Date
     }
 }
+#endif

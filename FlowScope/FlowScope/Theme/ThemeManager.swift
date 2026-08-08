@@ -32,6 +32,17 @@ final class ThemeManager: ObservableObject {
         self.engine = engine
         let saved = UserDefaults.standard.string(forKey: "theme.selectedTheme")
         self.currentTheme = initialTheme ?? AppTheme(rawValue: saved ?? "") ?? .flame
+        // A retired theme resolves to nil above and falls back to Flame; write
+        // that back so the dead value doesn't linger in defaults forever.
+        storedTheme = currentTheme.rawValue
+        publishPaletteToWidgets()
+    }
+
+    /// Called when the per-theme customization store changes. The palette is
+    /// derived, not stored, so the manager only has to announce that anything
+    /// reading `configuration` is now stale.
+    func themeCustomizationDidChange() {
+        objectWillChange.send()
         publishPaletteToWidgets()
     }
 
@@ -66,7 +77,7 @@ final class ThemeManager: ObservableObject {
     }
 
     /// Animates using the *incoming* theme's own transition style, so
-    /// Lightning snaps, Aurora dissolves and Cyberpunk glitches.
+    /// Cyberpunk glitches, Neon 80s snaps and Flame crossfades.
     func switchTheme(to theme: AppTheme) {
         withAnimation(engine.configuration(for: theme).transition.animation) {
             currentTheme = theme

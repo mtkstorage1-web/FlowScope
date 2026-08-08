@@ -24,7 +24,7 @@ enum SoundCue {
     case themeSwitch
 }
 
-/// Per-theme sonic character, so Lightning cracks and Aurora shimmers.
+/// Per-theme sonic character, so Flame glows warm and Cyberpunk buzzes retro.
 enum SoundProfile: String, CaseIterable, Identifiable, Codable {
     case crystalline, warm, electric, retro, cosmic
     var id: String { rawValue }
@@ -63,11 +63,11 @@ enum SoundProfile: String, CaseIterable, Identifiable, Codable {
 
     static func matching(_ theme: AppTheme) -> SoundProfile {
         switch theme {
-        case .lightning, .laser:            return .electric
-        case .flame, .lava, .burningEmber:  return .warm
-        case .cyberpunk, .neon80s:          return .retro
-        case .aurora, .galaxy:              return .cosmic
-        case .darkMatter:                   return .crystalline
+        case .flame, .lava, .redHood:   return .warm
+        case .cyberpunk, .neon80s:      return .retro
+        case .superman:                 return .cosmic
+        case .batman, .deathstroke:     return .crystalline
+        case .nightwing:                return .electric
         }
     }
 }
@@ -90,9 +90,12 @@ final class SoundManager {
     private func configureIfNeeded() {
         guard !isConfigured else { return }
         do {
+            #if os(iOS)
             // .ambient => obeys the ring/silent switch and mixes with music.
+            // macOS has no audio session to configure; AVAudioEngine mixes by default.
             try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
+            #endif
 
             engine.attach(player)
             engine.connect(player, to: engine.mainMixerNode, format: format)

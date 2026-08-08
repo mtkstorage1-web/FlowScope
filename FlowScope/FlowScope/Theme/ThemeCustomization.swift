@@ -54,8 +54,19 @@ struct ThemeCustomization: Codable, Equatable {
     /// Overrides the theme's default ring design when set.
     var ringDesign: RingDesign?
 
+    /// Explicit color picks, as "#RRGGBB". These sit on top of the sliders, so
+    /// you can nudge the whole palette *and* pin one exact color.
+    var primaryHex: String?
+    var secondaryHex: String?
+    var backgroundHex: String?
+
     static let none = ThemeCustomization()
     var isCustomized: Bool { self != .none }
+
+    /// True when the hue/saturation/brightness sliders are off their defaults.
+    var hasGlobalAdjustment: Bool {
+        hueShift != 0 || saturation != 1 || brightness != 1
+    }
 }
 
 // MARK: - Store
@@ -94,6 +105,10 @@ final class ThemeCustomizationStore: ObservableObject {
     private func persist() {
         objectWillChange.send()
         raw = (try? JSONEncoder().encode(cache)) ?? Data()
+        // Screens that only observe ThemeManager (the timer, the log, the
+        // widgets) would otherwise keep the old palette until the next theme
+        // switch.
+        ThemeManager.shared.themeCustomizationDidChange()
     }
 }
 
@@ -105,13 +120,11 @@ extension Color {
     func adjusted(hueShift: Double, saturation satScale: Double, brightness brightScale: Double) -> Color {
         guard hueShift != 0 || satScale != 1 || brightScale != 1 else { return self }
 
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        guard UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return self }
+        guard let (h, s, b, a) = hsbaComponents() else { return self }
 
         // Greys have no meaningful hue — only scale their brightness so
-        // monochrome themes (Dark Matter) don't turn muddy.
-        // 0.15 covers Dark Matter's #9CA3AF (s ~0.09), which would otherwise
-        // tint olive and destroy the monochrome identity.
+        // near-monochrome accents (Lava's charcoal, Neon 80s' white digits)
+        // don't tint olive and lose their identity.
         if s < 0.15 {
             return Color(hue: Double(h),
                          saturation: Double(s),
@@ -133,5 +146,57 @@ extension Color {
         adjusted(hueShift: customization.hueShift,
                  saturation: customization.saturation,
                  brightness: customization.brightness)
+    }
+
+    /// Linear blend toward another color. Used to derive a background's darker
+    /// bottom stop and its lifted surface from a single picked color — plain
+    /// brightness scaling can't do that when the pick is pure black.
+    func mixed(with other: Color, amount: Double) -> Color {
+        let t = min(max(amount, 0), 1)
+        let (r1, g1, b1, a1) = rgbaComponents()
+        let (r2, g2, b2, _) = other.rgbaComponents()
+        return Color(
+            .sRGB,
+            red: Double(r1) * (1 - t) + Double(r2) * t,
+            green: Double(g1) * (1 - t) + Double(g2) * t,
+            blue: Double(b1) * (1 - t) + Double(b2) * t,
+            opacity: Double(a1)
+        )
+    }
+}
+
+// MARK: - Color delta
+
+/// The HSB difference between two colors, reusable as a transform.
+///
+/// Picking a new accent shouldn't flatten the theme into one hue — it should
+/// move the whole accent family by the same amount, so Flame's red→orange→yellow
+/// digit ramp survives being turned blue.
+struct ColorDelta {
+    let hueShift: Double
+    let saturationScale: Double
+    let brightnessScale: Double
+
+    init(from source: Color, to target: Color) {
+        guard let (h1, s1, b1, _) = source.hsbaComponents(),
+              let (h2, s2, b2, _) = target.hsbaComponents() else {
+            hueShift = 0; saturationScale = 1; brightnessScale = 1
+            return
+        }
+
+        var shift = (Double(h2) - Double(h1)) * 360
+        if shift > 180 { shift -= 360 }
+        if shift < -180 { shift += 360 }
+        hueShift = shift
+
+        // Guard against a division by ~0 when the source is grey or black.
+        saturationScale = s1 > 0.02 ? min(2, Double(s2) / Double(s1)) : 1
+        brightnessScale = b1 > 0.02 ? min(2, Double(b2) / Double(b1)) : 1
+    }
+
+    func apply(_ color: Color) -> Color {
+        color.adjusted(hueShift: hueShift,
+                       saturation: saturationScale,
+                       brightness: brightnessScale)
     }
 }

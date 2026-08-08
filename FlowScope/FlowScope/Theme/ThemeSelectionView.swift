@@ -2,7 +2,7 @@
 //  ThemeSelectionView.swift
 //  FlowScope
 //
-//  Grid of the 10 theme swatches. Tapping one triggers the 0.8s crossfade.
+//  Grid of the theme swatches. Tapping one triggers the 0.8s crossfade.
 //
 
 import SwiftUI
@@ -48,9 +48,15 @@ private struct ThemeSwatch: View {
                         .frame(width: 58, height: 58)
                         .shadow(color: config.primary.opacity(0.6), radius: isSelected ? 12 : 4)
 
-                    Image(systemName: config.theme.icon)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                    // Character themes are identified by their emblem, not a
+                    // stand-in glyph — that's the whole reason to pick one.
+                    if let emblem = config.emblem {
+                        ThemeEmblemView(emblem: emblem, config: config, size: 38, strength: 1)
+                    } else {
+                        Image(systemName: config.theme.icon)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
 
                     Circle()
                         .stroke(config.primary, lineWidth: 3)
@@ -73,7 +79,7 @@ private struct ThemeSwatch: View {
 
 #Preview {
     ZStack {
-        ThemedBackground(configuration: ThemeProvider().configuration(for: .galaxy))
+        ThemedBackground(configuration: ThemeProvider().configuration(for: .cyberpunk))
         ScrollView {
             ThemeSelectionView()
                 .environmentObject(ThemeManager.shared)

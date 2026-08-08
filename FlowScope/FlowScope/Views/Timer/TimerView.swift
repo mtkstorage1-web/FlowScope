@@ -19,9 +19,27 @@ struct TimerView: View {
     @State private var showMoodDial = false
     @State private var showEndConfirmation = false
     @State private var showSetupSheet = false
-
     @ObservedObject private var settings = AppSettings.shared
     private var config: ThemeConfiguration { themeManager.configuration }
+
+    /// True once a session exists — running or paused with time on the clock.
+    private var hasActiveSession: Bool {
+        sessionManager.isRunning || sessionManager.elapsedTime > 0
+    }
+
+    /// Driven by the Settings switch, and only while a session is live — the
+    /// idle screen still needs its start button.
+    private var minimal: Bool {
+        settings.minimalSession && hasActiveSession
+    }
+
+    /// The emblem only steps back when something is actually drawn on top of
+    /// it — which now means the countdown alone. With that switched off (the
+    /// default) the ring centre is empty and the emblem has no reason to fade.
+    private var emblemStrength: Double {
+        let overlapped = hasActiveSession && !minimal && settings.showGoalTimer
+        return overlapped ? 0.34 : 0.95
+    }
 
     /// What the ring measures, per the user's choice.
     private var ringProgress: CGFloat {
@@ -39,6 +57,9 @@ struct TimerView: View {
             VStack(spacing: 32) {
                 Spacer()
 
+                // The banners survive minimal mode — they carry the only way to
+                // discard a recovered session and the only hint that Live
+                // Activities are switched off system-wide.
                 restoredBanner
 
                 liveActivityDisabledBanner
@@ -62,19 +83,41 @@ struct TimerView: View {
                         center: .center, startRadius: 0, endRadius: 96
                     )
                     .allowsHitTesting(false)
-                    ringCenter
+
+                    // Character themes fill the ring with their emblem. It
+                    // drops back to a watermark once a session starts so the
+                    // cycle countdown on top of it stays readable — unless the
+                    // chrome is hidden, in which case nothing overlaps it.
+                    if let emblem = config.emblem {
+                        ThemeEmblemView(
+                            emblem: emblem,
+                            config: config,
+                            size: minimal ? 210 : 172,
+                            strength: emblemStrength,
+                            isLive: sessionManager.isRunning
+                        )
+                        .animation(.easeInOut(duration: 0.45), value: emblemStrength)
+                        .animation(.easeInOut(duration: 0.45), value: minimal)
+                    }
+
+                    if !minimal { ringCenter }
                 }
                 .opacity(settings.ringMode == .hidden ? 0 : 1)
                 .frame(height: settings.ringMode == .hidden ? 0 : nil)
                 .padding(.vertical, 12)
 
+                if !minimal { sessionCounters }
+
                 logMoodButton
 
-                controlButtons
-                    .padding(.bottom, 40)
+                if !minimal {
+                    controlButtons
+                        .padding(.bottom, 40)
+                }
 
                 Spacer()
             }
+
             // One-shot celebration when a focus cycle completes.
             if sessionManager.cycleJustCompleted {
                 config.primary
@@ -86,15 +129,14 @@ struct TimerView: View {
         }
         .animation(.easeOut(duration: 0.5), value: sessionManager.cycleJustCompleted)
         .applyTheme(config)
-        .statusBar(hidden: settings.hideStatusBar)
+        .platformStatusBarHidden(settings.hideStatusBar)
         .sheet(isPresented: $showSetupSheet) {
             SessionSetupView()
                 .environmentObject(sessionManager)
         }
         .sheet(isPresented: $showMoodDial) {
             MoodDialView()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .platformSheetSizing()
         }
         .alert("End Session?", isPresented: $showEndConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -126,9 +168,7 @@ struct TimerView: View {
                 }
                 Spacer()
                 Button("Settings") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    PlatformSettings.openAppSettings()
                 }
                 .font(.system(.caption, design: config.fontDesign).weight(.semibold))
                 .foregroundStyle(config.primary)
@@ -176,7 +216,7 @@ struct TimerView: View {
 
     @ViewBuilder
     private var sessionHeader: some View {
-        if sessionManager.isRunning || sessionManager.elapsedTime > 0 {
+        if hasActiveSession {
             VStack(spacing: 6) {
                 Text(sessionManager.sessionName)
                     .font(.system(.headline, design: config.fontDesign).weight(config.fontWeight))
@@ -196,28 +236,43 @@ struct TimerView: View {
 
     // MARK: - Mood Counter
 
+    /// Countdown only. The cycle/log counters used to live here too, but inside
+    /// the ring they sat right on top of the emblem.
     @ViewBuilder
     private var ringCenter: some View {
-        if sessionManager.isRunning || sessionManager.elapsedTime > 0 {
+        if hasActiveSession && settings.showGoalTimer {
             VStack(spacing: 3) {
-                Text(cycleRemaining)
+                Text(goalCountdown)
                     .font(.system(.title2, design: config.fontDesign).weight(.semibold))
-                    .foregroundStyle(config.primary)
+                    .foregroundStyle(goalReached ? config.secondary : config.primary)
                     .monospacedDigit()
-                Text("left in cycle")
+                Text(goalCountdownLabel)
                     .font(.system(.caption2, design: config.fontDesign))
                     .foregroundStyle(config.textSecondary)
-
-                HStack(spacing: 10) {
-                    Label("\(sessionManager.completedCycles)", systemImage: "repeat")
-                    Label("\(sessionManager.moodLogs.count)", systemImage: "chart.bar.fill")
-                }
-                .font(.system(.caption2, design: config.fontDesign))
-                .foregroundStyle(config.textSecondary)
-                .padding(.top, 2)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(cycleRemaining) left in cycle, \(sessionManager.completedCycles) cycles done")
+            .accessibilityLabel("\(goalCountdown) \(goalCountdownLabel)")
+        }
+    }
+
+    // MARK: - Session Counters
+
+    /// Cycles completed and moods logged, parked below the ring so the emblem
+    /// stays unobstructed.
+    @ViewBuilder
+    private var sessionCounters: some View {
+        if hasActiveSession {
+            HStack(spacing: 16) {
+                Label("\(sessionManager.completedCycles)", systemImage: "repeat")
+                Label("\(sessionManager.moodLogs.count)", systemImage: "chart.bar.fill")
+            }
+            .font(.system(.footnote, design: config.fontDesign))
+            .foregroundStyle(config.textSecondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 7)
+            .background(Capsule().fill(config.surface))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(sessionManager.completedCycles) cycles done, \(sessionManager.moodLogs.count) moods logged")
         }
     }
 
@@ -292,9 +347,38 @@ struct TimerView: View {
         return formatter.string(from: interval) ?? "0 seconds"
     }
 
-    /// Minutes:seconds remaining in the current 25-minute cycle.
+    /// Minutes:seconds remaining in the current cycle.
     private var cycleRemaining: String {
-        let left = Int(sessionManager.timeLeftInCycle)
+        clock(sessionManager.timeLeftInCycle)
+    }
+
+    /// Seconds left of the session goal, floored at zero.
+    private var goalRemaining: TimeInterval {
+        max(0, settings.goalLength - sessionManager.elapsedTime)
+    }
+
+    private var goalReached: Bool {
+        settings.ringMode == .sessionGoal && goalRemaining == 0
+    }
+
+    /// The readout tracks whatever the ring is measuring. Showing cycle time
+    /// while the ring fills over the goal made the two disagree on screen.
+    private var goalCountdown: String {
+        switch settings.ringMode {
+        case .sessionGoal: return goalReached ? "Goal met" : clock(goalRemaining)
+        case .cycle, .hidden: return cycleRemaining
+        }
+    }
+
+    private var goalCountdownLabel: String {
+        switch settings.ringMode {
+        case .sessionGoal: return goalReached ? "\(settings.goalMinutes) min done" : "left of goal"
+        case .cycle, .hidden: return "left in cycle"
+        }
+    }
+
+    private func clock(_ interval: TimeInterval) -> String {
+        let left = Int(interval)
         return String(format: "%d:%02d", left / 60, left % 60)
     }
 }

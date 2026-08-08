@@ -192,7 +192,262 @@ struct ThemeParticles: View {
         case .lavaCracks:               drawLava(&ctx, size, t)
         case .retroGrid:                drawRetroGrid(&ctx, size, t)
         case .sparkles:                 drawSparkles(&ctx, size, t)
+        case .rain:                     drawRain(&ctx, size, t)
+        case .carbon:                   drawCarbon(&ctx, size, t)
+        case .fire:                     drawFire(&ctx, size, t)
         }
+    }
+
+    // MARK: Fire — actual combustion
+
+    /// A bed of flame tongues licking up from below the bottom edge.
+    ///
+    /// Structure is what separates fire from bloom: each tongue is a real
+    /// tapered body whose width pinches to nothing at the tip, whose centreline
+    /// sways more the higher it goes, and whose height flickers on its own
+    /// clock. Floating glowing dots read as fireflies no matter how you tune
+    /// the colour — this had to be built as shapes.
+    ///
+    /// Blending is deliberately mixed: the body draws normally so it occludes
+    /// like burning gas, and only the inner core goes additive, which is where
+    /// real flame is genuinely emissive.
+    private func drawFire(_ ctx: inout GraphicsContext, _ size: CGSize, _ t: Double) {
+        // Heat wash rising off the bed.
+        ctx.fill(
+            Path(CGRect(x: 0, y: size.height * 0.5,
+                        width: size.width, height: size.height * 0.5)),
+            with: .linearGradient(
+                Gradient(stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: primary.opacity(0.10 * alphaScale), location: 0.6),
+                    .init(color: secondary.opacity(0.20 * alphaScale), location: 1)
+                ]),
+                startPoint: CGPoint(x: 0, y: size.height * 0.5),
+                endPoint: CGPoint(x: 0, y: size.height)
+            )
+        )
+
+        let tongues = count(12)
+        for (index, p) in particles.prefix(tongues).enumerated() {
+            let phase = p.phase + Double(index) * 1.7
+            // Two out-of-step clocks so no two tongues pulse together.
+            let flicker = 0.72
+                + 0.20 * sin(t * 3.1 + phase)
+                + 0.14 * sin(t * 7.9 + phase * 2.3)
+            // Short and broad. Tall narrow tongues read as reeds, not fire —
+            // real flame is wider than it is tall until it necks into smoke.
+            let height = size.height * CGFloat(0.19 + 0.23 * p.speed / 1.6) * CGFloat(flicker)
+            let baseX = p.x * size.width
+            let baseWidth = size.width * (0.095 + 0.075 * p.size / 7)
+            let lean = CGFloat(sin(t * 0.5 + phase)) * size.width * 0.03
+
+            func tongue(_ widthScale: CGFloat, _ heightScale: CGFloat) -> Path {
+                flameTongue(baseX: baseX,
+                            baseY: size.height * 1.04,
+                            baseWidth: baseWidth * widthScale,
+                            height: height * heightScale,
+                            phase: phase, lean: lean, t: t)
+            }
+
+            func ramp(_ stops: [Gradient.Stop], _ h: CGFloat) -> GraphicsContext.Shading {
+                .linearGradient(Gradient(stops: stops),
+                                startPoint: CGPoint(x: baseX, y: size.height * 1.04),
+                                endPoint: CGPoint(x: baseX, y: size.height * 1.04 - h))
+            }
+
+            // Outer envelope — soft, deep, and blurred into the backdrop.
+            var soft = ctx
+            soft.addFilter(.blur(radius: baseWidth * 0.55))
+            soft.fill(
+                tongue(1, 1),
+                with: ramp([
+                    .init(color: secondary.opacity(0.40 * alphaScale), location: 0),
+                    .init(color: primary.opacity(0.30 * alphaScale), location: 0.35),
+                    .init(color: primary.opacity(0), location: 1)
+                ], height)
+            )
+
+            // Body.
+            ctx.fill(
+                tongue(0.78, 0.86),
+                with: ramp([
+                    .init(color: secondary.opacity(0.75 * alphaScale), location: 0),
+                    .init(color: primary.opacity(0.62 * alphaScale), location: 0.4),
+                    .init(color: primary.opacity(0), location: 1)
+                ], height * 0.86)
+            )
+
+            // Emissive core.
+            var hot = ctx
+            hot.blendMode = .plusLighter
+            hot.fill(
+                tongue(0.40, 0.52),
+                with: ramp([
+                    .init(color: .white.opacity(0.55 * alphaScale), location: 0),
+                    .init(color: secondary.opacity(0.40 * alphaScale), location: 0.55),
+                    .init(color: secondary.opacity(0), location: 1)
+                ], height * 0.52)
+            )
+        }
+
+        // A handful of sparks torn off the tips — sparse on purpose.
+        for p in particles.suffix(count(5)) {
+            let travel = (t * 0.19 * p.speed + p.phase).truncatingRemainder(dividingBy: 1)
+            let progress = CGFloat(travel)
+            let y = size.height * (1 - progress * 0.85)
+            let drift = CGFloat(sin(t * 1.6 + p.phase)) * 14 * progress
+            bloomDot(&ctx,
+                     at: CGPoint(x: p.x * size.width + drift, y: y),
+                     radius: p.size * 0.6,
+                     color: secondary,
+                     alpha: Double(1 - progress) * 0.5 * alphaScale)
+        }
+    }
+
+    /// One flame tongue: a closed body sampled up its swaying centreline.
+    ///
+    /// The taper multiplies a power falloff (pinches to a point at the tip) by
+    /// a half-sine (pushes the widest part just above the base, the way a real
+    /// flame necks in where it meets its fuel).
+    private func flameTongue(baseX: CGFloat,
+                             baseY: CGFloat,
+                             baseWidth: CGFloat,
+                             height: CGFloat,
+                             phase: Double,
+                             lean: CGFloat,
+                             t: Double) -> Path {
+        let steps = 22
+        var left: [CGPoint] = []
+        var right: [CGPoint] = []
+
+        for step in 0...steps {
+            let u = CGFloat(step) / CGFloat(steps)          // 0 at base, 1 at tip
+            let y = baseY - height * u
+            // Exponent below 1 keeps the body broad most of the way up and
+            // then pinches late. Above 1 it collapses immediately into a spike.
+            let taper = pow(1 - u, 0.85) * (0.45 + 0.55 * sin(Double(u) * .pi))
+            let width = baseWidth * CGFloat(taper)
+
+            // Sway is scaled by u, so the base stays planted and the tip whips.
+            let sway = (CGFloat(sin(t * 2.1 + phase + Double(u) * 2.6)) * height * 0.085
+                        + CGFloat(sin(t * 5.3 + phase * 1.7 + Double(u) * 4.3)) * height * 0.03) * u
+            let cx = baseX + sway + lean * u
+
+            left.append(CGPoint(x: cx - width, y: y))
+            right.append(CGPoint(x: cx + width, y: y))
+        }
+
+        var path = Path()
+        path.move(to: left[0])
+        for point in left.dropFirst() { path.addLine(to: point) }
+        for point in right.reversed() { path.addLine(to: point) }
+        path.closeSubpath()
+        return path
+    }
+
+    // MARK: Carbon — clean technical weave
+
+    /// Fine opposing hatch with a slow raking sheen. Deliberately the only
+    /// field here that never uses `bloomStroke`: additive light is what makes
+    /// the other backdrops sparkle, and this one has to stay flat so a
+    /// hard-edged emblem reads on top of it.
+    ///
+    /// Drawn as hairlines rather than woven tiles — a real 2×2 twill needs
+    /// thousands of rounded rects per frame, which is far too heavy at 60fps
+    /// for something the eye reads as texture either way.
+    private func drawCarbon(_ ctx: inout GraphicsContext, _ size: CGSize, _ t: Double) {
+        let span = size.width + size.height
+        let spacing = max(7, span / 78)
+        let alpha = 0.05 * alphaScale
+
+        for direction in [1.0, -1.0] {
+            var hatch = Path()
+            var offset = -size.height
+            while offset < size.width + size.height {
+                hatch.move(to: CGPoint(x: offset, y: 0))
+                hatch.addLine(to: CGPoint(x: offset + CGFloat(direction) * size.height,
+                                          y: size.height))
+                offset += spacing
+            }
+            ctx.stroke(
+                hatch,
+                with: .color((direction > 0 ? primary : secondary).opacity(alpha)),
+                style: StrokeStyle(lineWidth: 1)
+            )
+        }
+
+        // Gouges over the hatch. Fixed positions from `noise`, so the wear sits
+        // still while the sheen moves across it — scratches that drift look
+        // like falling debris.
+        var gouges = Path()
+        for i in 0..<34 {
+            let x = CGFloat(noise(Double(i), 3.1)) * size.width
+            let y = CGFloat(noise(Double(i), 7.7)) * size.height
+            let len = CGFloat(0.04 + 0.16 * noise(Double(i), 11.3)) * size.height
+            let lean = CGFloat(-0.5 + noise(Double(i), 5.9))
+            gouges.move(to: CGPoint(x: x, y: y))
+            gouges.addLine(to: CGPoint(x: x + len * lean, y: y + len))
+        }
+        ctx.stroke(gouges,
+                   with: .color(.white.opacity(0.035 * alphaScale)),
+                   style: StrokeStyle(lineWidth: 1, lineCap: .round))
+
+        // Slow sheen so the surface breathes without ever twinkling.
+        let sweep = (sin(t * 0.16) + 1) / 2
+        ctx.fill(
+            Path(CGRect(origin: .zero, size: size)),
+            with: .linearGradient(
+                Gradient(stops: [
+                    .init(color: .clear, location: max(0, sweep - 0.35)),
+                    .init(color: primary.opacity(0.05 * alphaScale), location: sweep),
+                    .init(color: .clear, location: min(1, sweep + 0.35))
+                ]),
+                startPoint: CGPoint(x: 0, y: 0),
+                endPoint: CGPoint(x: size.width, y: size.height)
+            )
+        )
+    }
+
+    // MARK: Rain — Gotham downpour
+
+    /// Wind-leaned streaks falling at varied speeds, plus the occasional
+    /// splash-lit gust. Streak *length* scales with speed, which is what sells
+    /// depth — uniform drops read as static noise.
+    private func drawRain(_ ctx: inout GraphicsContext, _ size: CGSize, _ t: Double) {
+        let lean: CGFloat = 0.22   // horizontal drift per unit of fall
+
+        for p in particles.prefix(count(46)) {
+            let fall = (t * 0.32 * (0.5 + p.speed) + p.phase).truncatingRemainder(dividingBy: 1)
+            let progress = CGFloat(fall)
+
+            // Drops start above the top edge so nothing pops into existence.
+            let y = -size.height * 0.1 + size.height * 1.2 * progress
+            let x = p.x * size.width * 1.3 - size.width * 0.15 + y * lean
+
+            let length = size.height * 0.035 * CGFloat(0.4 + p.speed)
+            var streak = Path()
+            streak.move(to: CGPoint(x: x, y: y))
+            streak.addLine(to: CGPoint(x: x - length * lean, y: y - length))
+
+            // Nearer drops are brighter and slightly warmer.
+            let depthFade = 0.3 + 0.7 * (p.speed / 1.6)
+            bloomStroke(&ctx, streak,
+                        color: p.phase > 3.4 ? secondary : primary,
+                        width: max(0.6, p.size * 0.22),
+                        alpha: depthFade * 0.5 * alphaScale,
+                        core: false)
+        }
+
+        // Slow sheet of drifting mist behind the streaks.
+        let gust = 0.5 + 0.5 * sin(t * 0.35)
+        ctx.fill(
+            Path(CGRect(origin: .zero, size: size)),
+            with: .linearGradient(
+                Gradient(colors: [primary.opacity(0.05 * gust * alphaScale), .clear]),
+                startPoint: CGPoint(x: size.width, y: 0),
+                endPoint: CGPoint(x: 0, y: size.height)
+            )
+        )
     }
 
     // MARK: Flame / Burning Ember
@@ -712,5 +967,5 @@ struct ThemedBackground: View {
 }
 
 #Preview {
-    ThemedBackground(configuration: ThemeProvider().configuration(for: .lightning))
+    ThemedBackground(configuration: ThemeProvider().configuration(for: .cyberpunk))
 }

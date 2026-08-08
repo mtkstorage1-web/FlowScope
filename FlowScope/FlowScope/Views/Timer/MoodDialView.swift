@@ -54,15 +54,14 @@ struct MoodDialView: View {
                   .padding(.bottom, 20)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .platformNavigationTitleMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(config.primary)
                 }
             }
-            .toolbarBackground(config.backgroundTop, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .platformToolbarBackground(config.backgroundTop)
         }
         .tint(config.primary)
         .preferredColorScheme(.dark)

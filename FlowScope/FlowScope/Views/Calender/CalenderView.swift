@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CalendarView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var theme: AppThemeManager
     @State private var selectedDate = Date()
     @State private var selectedSession: Session?
     @State private var showSessionDetail = false
@@ -10,7 +11,7 @@ struct CalendarView: View {
     private let daysInWeek = 7
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Month Navigation
@@ -102,9 +103,11 @@ struct CalendarView: View {
                 .padding(.vertical)
             }
             .navigationTitle("History")
-            .navigationBarTitleDisplayMode(.large)
+            .platformNavigationTitleMode(.large)
             .sheet(item: $selectedSession) { session in
                 SessionGraphView(session: session)
+                    .environmentObject(dataManager)
+                    .environmentObject(theme)
             }
         }
     }
@@ -187,30 +190,47 @@ struct DayCell: View {
 struct SessionCard: View {
     @EnvironmentObject var theme: AppThemeManager
     let session: Session
-    
+
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(session.durationInMinutes) min session")
+                Text(session.displayName)
                     .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text(session.startTime, style: .time)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Label(session.durationString, systemImage: "timer")
+                        .foregroundColor(theme.accentColor)
+
+                    Text("•")
+                        .foregroundColor(.secondary)
+
+                    Text(session.startTime, style: .time)
+                        .foregroundColor(.secondary)
+
+                    if !session.category.isEmpty {
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text(session.category)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .font(.caption)
             }
-            
-            Spacer()
-            
+
+            Spacer(minLength: 0)
+
             HStack(spacing: 4) {
                 Text("\(session.averageMood)%")
                     .font(.headline)
-                
+
                 Image(systemName: "heart.fill")
                     .foregroundColor(.green)
                     .font(.caption)
             }
-            
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(.secondary)

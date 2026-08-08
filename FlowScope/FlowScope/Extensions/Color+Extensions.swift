@@ -33,9 +33,7 @@ extension Color {
 
     /// Hex string representation ("#RRGGBB") for persisting a Color.
     var hexString: String {
-        let uiColor = UIColor(self)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let (r, g, b, _) = rgbaComponents()
         return String(
             format: "#%02X%02X%02X",
             Int(round(r * 255)),

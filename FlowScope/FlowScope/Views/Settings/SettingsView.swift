@@ -111,6 +111,12 @@ struct SettingsView: View {
                                     caption("The ring fills once over your \(settings.goalMinutes)-minute target.")
                                 }
 
+                                if settings.ringMode != .hidden {
+                                    toggle(goalTimerTitle, "timer.circle",
+                                           goalTimerHint,
+                                           $settings.showGoalTimer)
+                                }
+
                                 toggle("Cycle Complete Alert", "bell.badge",
                                        "Flash, haptic and chime when a lap finishes.",
                                        $settings.cycleAlert)
@@ -166,6 +172,14 @@ struct SettingsView: View {
                         // MARK: Layout & behavior
                         section("Layout & Behavior", "slider.horizontal.3") {
                             VStack(spacing: 14) {
+                                toggle("Minimal Session View", "eye.slash",
+                                       "While a session runs, hide the cycle countdown and the pause/stop controls. Your task name, mood logging and the emblem stay.",
+                                       $settings.minimalSession)
+
+                                if settings.minimalSession {
+                                    caption("With the controls hidden, turn this back off to pause or end a session.")
+                                }
+
                                 toggle("Floating Log Control", "circle.grid.cross",
                                        "Draggable satisfaction slider on every tab.",
                                        $settings.floatingControlEnabled)
@@ -198,7 +212,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+            .platformNavigationTitleMode(.large)
             .confirmationDialog("Reset all settings?", isPresented: $showResetConfirm, titleVisibility: .visible) {
                 Button("Reset Everything", role: .destructive) {
                     settings.resetAll()
@@ -213,6 +227,19 @@ struct SettingsView: View {
     }
 
     // MARK: - Building blocks
+
+    /// The readout is named after whatever it's counting down to, so the
+    /// switch can't promise a "goal timer" while the ring is measuring cycles.
+    private var goalTimerTitle: String {
+        settings.ringMode == .sessionGoal ? "Show Goal Timer" : "Show Cycle Timer"
+    }
+
+    private var goalTimerHint: String {
+        let target = settings.ringMode == .sessionGoal
+            ? "your \(settings.goalMinutes)-minute goal"
+            : "the current \(settings.cycleMinutes)-minute cycle"
+        return "Adds a countdown to \(target) inside the ring. Off by default — the big digits already count up."
+    }
 
     private var intensityHint: String {
         switch settings.effectIntensity {
@@ -360,17 +387,36 @@ private struct ThemeCustomizerPanel: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // Live swatch strip
-            HStack(spacing: 10) {
-                swatch(config.primary, "Accent")
-                swatch(config.secondary, "Secondary")
-                swatch(config.backgroundTop, "Background")
-                Spacer()
-                if custom.isCustomized {
-                    Button("Reset") { store.reset(theme) }
-                        .font(.system(.caption, design: config.fontDesign).weight(.semibold))
-                        .foregroundStyle(.red)
+            // Live swatch strip — every swatch opens the system color picker.
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Colors")
+                        .font(.system(.subheadline, design: config.fontDesign).weight(.medium))
+                        .foregroundStyle(config.textPrimary)
+                    Spacer()
+                    if custom.isCustomized {
+                        Button("Reset") { store.reset(theme) }
+                            .font(.system(.caption, design: config.fontDesign).weight(.semibold))
+                            .foregroundStyle(.red)
+                    }
                 }
+
+                HStack(spacing: 18) {
+                    swatch("Accent", config.primary, isOverridden: custom.primaryHex != nil) { hex in
+                        update { $0.primaryHex = hex }
+                    }
+                    swatch("Secondary", config.secondary, isOverridden: custom.secondaryHex != nil) { hex in
+                        update { $0.secondaryHex = hex }
+                    }
+                    swatch("Background", config.backgroundTop, isOverridden: custom.backgroundHex != nil) { hex in
+                        update { $0.backgroundHex = hex }
+                    }
+                    Spacer()
+                }
+
+                Text("Tap a swatch to pick any color. The arrow badge restores the theme's own.")
+                    .font(.system(.caption2, design: config.fontDesign))
+                    .foregroundStyle(config.textSecondary)
             }
             .padding()
             .themedSurface(config)
@@ -457,16 +503,45 @@ private struct ThemeCustomizerPanel: View {
         ("Magenta", 300), ("Green", 110), ("Gold", 40), ("Crimson", -20)
     ]
 
-    private func swatch(_ color: Color, _ label: String) -> some View {
-        VStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 30, height: 30)
-                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1))
+    /// A tappable color well. `ColorPicker` supplies the native picker sheet;
+    /// the overlaid circle keeps the app's own look and shows a ring when the
+    /// color has been overridden. Long-press clears the override.
+    private func swatch(_ label: String,
+                        _ color: Color,
+                        isOverridden: Bool,
+                        onPick: @escaping (String?) -> Void) -> some View {
+        let binding = Binding<Color>(
+            get: { color },
+            set: { onPick($0.hexString) }
+        )
+
+        return VStack(spacing: 5) {
+            ColorPicker("", selection: binding, supportsOpacity: false)
+                .labelsHidden()
+                .scaleEffect(1.15)
+                .frame(width: 44, height: 40)
+                .overlay(alignment: .topTrailing) {
+                    if isOverridden {
+                        Button {
+                            HapticManager.shared.lightImpact()
+                            onPick(nil)
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward.circle.fill")
+                                .font(.system(size: 15))
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(config.textPrimary, config.primary)
+                        }
+                        .buttonStyle(.plain)
+                        .offset(x: 4, y: -4)
+                        .accessibilityLabel("Reset \(label) color")
+                    }
+                }
+
             Text(label)
                 .font(.system(size: 9, design: config.fontDesign))
-                .foregroundStyle(config.textSecondary)
+                .foregroundStyle(isOverridden ? config.primary : config.textSecondary)
         }
+        .accessibilityLabel("\(label) color")
     }
 
     private func slider(_ title: String,
@@ -525,6 +600,9 @@ private struct ThemePreviewCard: View {
 
             ZStack {
                 ThemedProgressRing(progress: 0.62, config: config, diameter: 120)
+                if let emblem = config.emblem {
+                    ThemeEmblemView(emblem: emblem, config: config, size: 74, strength: 0.22)
+                }
                 Text("32:18")
                     .font(.system(.title3, design: config.fontDesign).weight(config.fontWeight))
                     .foregroundStyle(config.digitGradient)

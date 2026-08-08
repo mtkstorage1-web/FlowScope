@@ -129,6 +129,76 @@ class DataManager: ObservableObject {
         }
     }
     
+    // MARK: - Editing a finished session
+    //
+    // Focus is the whole point of the app, so forgetting to tap "log" mid-task
+    // is the normal case, not the exception. Everything below lets a session be
+    // completed after the fact — the graph and averages recompute from the same
+    // relationship the live session writes to.
+
+    /// Adds a log to an already-saved session. `timestamp` is an offset in
+    /// seconds from the session's start, clamped to the session's length.
+    @discardableResult
+    func addMoodLog(to session: Session,
+                    satisfaction: Int,
+                    note: String = "",
+                    at timestamp: TimeInterval) -> MoodLog {
+        let clamped = min(max(0, timestamp), max(0, session.totalDuration))
+        let entry = MoodLog(
+            timestamp: clamped,
+            satisfaction: min(max(0, satisfaction), 100),
+            note: note.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        modelContext?.insert(entry)
+        // Append only — SwiftData fills in `entry.session` from the inverse.
+        // Setting both sides can insert the log twice.
+        session.moodLogs.append(entry)
+        persistChanges()
+        return entry
+    }
+
+    func updateMoodLog(_ log: MoodLog,
+                       satisfaction: Int,
+                       note: String,
+                       at timestamp: TimeInterval? = nil) {
+        log.satisfaction = min(max(0, satisfaction), 100)
+        log.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let timestamp, let session = log.session {
+            log.timestamp = min(max(0, timestamp), max(0, session.totalDuration))
+        } else if let timestamp {
+            log.timestamp = max(0, timestamp)
+        }
+        persistChanges()
+    }
+
+    func deleteMoodLog(_ log: MoodLog, from session: Session) {
+        session.moodLogs.removeAll { $0.id == log.id }
+        modelContext?.delete(log)
+        persistChanges()
+    }
+
+    func updateSessionDetails(_ session: Session, name: String, category: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        session.name = trimmedName.isEmpty ? "Untitled Session" : trimmedName
+        session.category = trimmedCategory.isEmpty ? "General" : trimmedCategory
+        persistChanges()
+    }
+
+    /// Saves and republishes derived state (list, widget snapshot).
+    private func persistChanges() {
+        guard let context = modelContext else {
+            print("❌ Error: modelContext is nil!")
+            return
+        }
+        do {
+            try context.save()
+            fetchAllSessions()
+        } catch {
+            print("❌ Error saving changes: \(error)")
+        }
+    }
+
     func sessionsForDate(_ date: Date) -> [Session] {
         let calendar = Calendar.current
         return sessions.filter { session in
