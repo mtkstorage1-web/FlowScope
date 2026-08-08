@@ -1,0 +1,79 @@
+name: Windows build
+
+# The WinUI XAML compiler and the Windows App SDK only run on Windows, so this
+# is where the Windows app actually gets compiled — and where the downloadable
+# .exe comes from.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'FlowScopeWindows/**'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'FlowScopeWindows/**'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        working-directory: FlowScopeWindows
+        run: dotnet restore FlowScopeWindows.sln -r win-x64
+
+      - name: Build
+        working-directory: FlowScopeWindows
+        run: dotnet build FlowScopeWindows.sln -c Release -p:Platform=x64 --no-restore
+
+      # Self-contained so anyone can download and run it without installing
+      # the .NET runtime or the Windows App Runtime first.
+      - name: Publish self-contained x64
+        working-directory: FlowScopeWindows
+        run: >
+          dotnet publish FlowScopeWindows/FlowScopeWindows.csproj
+          -c Release
+          -p:Platform=x64
+          -r win-x64
+          --self-contained true
+          -p:WindowsAppSDKSelfContained=true
+          -p:PublishSingleFile=false
+          -o publish
+
+      - name: Package
+        working-directory: FlowScopeWindows
+        shell: pwsh
+        run: |
+          if (-not (Test-Path publish/FlowScopeWindows.exe)) {
+            Write-Error "FlowScopeWindows.exe was not produced"
+            exit 1
+          }
+          Compress-Archive -Path publish/* -DestinationPath FlowScope-Windows-x64.zip -Force
+          Get-Item FlowScope-Windows-x64.zip | Select-Object Name, Length
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlowScope-Windows-x64
+          path: FlowScopeWindows/FlowScope-Windows-x64.zip
+          retention-days: 90
+
+      # When a release is published, attach the zip to it so the download link
+      # is stable rather than buried in a CI run.
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: FlowScopeWindows
+        run: gh release upload ${{ github.event.release.tag_name }} FlowScope-Windows-x64.zip --clobber
