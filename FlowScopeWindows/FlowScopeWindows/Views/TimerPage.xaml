@@ -1,0 +1,148 @@
+<Page
+    x:Class="FlowScopeWindows.Views.TimerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+
+    <Grid>
+        <!-- Themed wash over the window's Mica. -->
+        <Rectangle Fill="{ThemeResource FlowScopeBackgroundBrush}" Opacity="0.92" />
+
+        <!-- Animated background field; redrawn when the theme changes. -->
+        <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" />
+
+        <Grid Padding="32,16,32,32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Session identity -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="2">
+                <TextBlock
+                    x:Name="SessionNameText"
+                    HorizontalAlignment="Center"
+                    FontSize="20"
+                    FontFamily="{ThemeResource FlowScopeFontFamily}"
+                    Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+                <TextBlock
+                    x:Name="SessionCategoryText"
+                    HorizontalAlignment="Center"
+                    FontSize="13"
+                    Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+            </StackPanel>
+
+            <!-- Ring + digits -->
+            <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Canvas x:Name="RingCanvas" Width="340" Height="340">
+                    <Ellipse
+                        x:Name="RingTrack"
+                        Width="320" Height="320"
+                        Canvas.Left="10" Canvas.Top="10"
+                        StrokeThickness="13"
+                        Opacity="0.28"
+                        Stroke="{ThemeResource FlowScopeSecondaryBrush}" />
+                    <Path
+                        x:Name="RingProgress"
+                        StrokeThickness="13"
+                        StrokeStartLineCap="Round"
+                        StrokeEndLineCap="Round"
+                        Stroke="{ThemeResource FlowScopeRingBrush}" />
+                </Canvas>
+
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                    <TextBlock
+                        x:Name="ElapsedText"
+                        Text="00:00"
+                        HorizontalAlignment="Center"
+                        FontSize="{StaticResource DigitFontSize}"
+                        FontFamily="{ThemeResource FlowScopeFontFamily}"
+                        Foreground="{ThemeResource FlowScopeDigitBrush}" />
+
+                    <StackPanel
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="16"
+                        Opacity="0.85">
+                        <TextBlock
+                            x:Name="MoodCountText"
+                            FontSize="13"
+                            Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                        <TextBlock
+                            x:Name="CurrentMoodText"
+                            FontSize="13"
+                            Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Controls -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" Spacing="16">
+                <Button
+                    x:Name="LogMoodButton"
+                    Content="Log How You Feel"
+                    HorizontalAlignment="Center"
+                    Padding="24,10"
+                    Visibility="Collapsed"
+                    CornerRadius="{ThemeResource FlowScopeCornerRadius}"
+                    Click="OnLogMoodClick" />
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14">
+                    <Button
+                        x:Name="PrimaryButton"
+                        Width="76" Height="76"
+                        CornerRadius="38"
+                        Background="{ThemeResource FlowScopePrimaryBrush}"
+                        Click="OnPrimaryClick">
+                        <FontIcon x:Name="PrimaryIcon" Glyph="&#xE768;" FontSize="26" Foreground="White" />
+                    </Button>
+
+                    <Button
+                        x:Name="StopButton"
+                        Width="60" Height="60"
+                        VerticalAlignment="Center"
+                        CornerRadius="30"
+                        Visibility="Collapsed"
+                        Click="OnStopClick">
+                        <FontIcon Glyph="&#xE71A;" FontSize="18" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Floating quick-log control, mirrors the iOS/Android overlay. -->
+        <Border
+            x:Name="FloatingControl"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Margin="0,0,24,24"
+            Padding="12"
+            Visibility="Collapsed"
+            CornerRadius="{ThemeResource FlowScopeCornerRadius}"
+            Background="{ThemeResource FlowScopeSurfaceBrush}"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource FlowScopeSecondaryBrush}">
+            <StackPanel Spacing="8" Width="86">
+                <TextBlock
+                    x:Name="QuickMoodValue"
+                    Text="50"
+                    HorizontalAlignment="Center"
+                    FontSize="18"
+                    Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+                <Slider
+                    x:Name="QuickMoodSlider"
+                    Minimum="0" Maximum="100" Value="50"
+                    Orientation="Vertical"
+                    Height="130"
+                    HorizontalAlignment="Center"
+                    ValueChanged="OnQuickMoodChanged" />
+                <Button
+                    Content="Log"
+                    HorizontalAlignment="Stretch"
+                    CornerRadius="{ThemeResource FlowScopeCornerRadius}"
+                    Click="OnQuickLogClick" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>

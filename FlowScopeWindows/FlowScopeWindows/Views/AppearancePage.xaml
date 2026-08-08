@@ -1,0 +1,61 @@
+<Page
+    x:Class="FlowScopeWindows.Views.AppearancePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Rectangle Fill="{ThemeResource FlowScopeBackgroundBrush}" Opacity="0.92" />
+
+        <ScrollViewer Padding="32,16,32,24">
+            <StackPanel Spacing="20">
+                <TextBlock
+                    Text="Appearance"
+                    FontSize="30"
+                    FontFamily="{ThemeResource FlowScopeFontFamily}"
+                    Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+
+                <TextBlock
+                    Text="Theme"
+                    FontSize="17"
+                    Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+
+                <!-- Swatches are built in code so each one can paint its own palette. -->
+                <GridView
+                    x:Name="ThemeGrid"
+                    SelectionMode="Single"
+                    SelectionChanged="OnThemeSelected" />
+
+                <TextBlock
+                    Text="Session"
+                    FontSize="17"
+                    Margin="0,8,0,0"
+                    Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+
+                <Border Padding="20" CornerRadius="{ThemeResource FlowScopeCornerRadius}" Background="{ThemeResource FlowScopeSurfaceBrush}">
+                    <StackPanel Spacing="18">
+                        <ToggleSwitch x:Name="SoundToggle" Header="Sound cues" Toggled="OnSoundToggled" />
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Volume" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <Slider x:Name="VolumeSlider" Minimum="0" Maximum="1" StepFrequency="0.05" ValueChanged="OnVolumeChanged" />
+                        </StackPanel>
+
+                        <ToggleSwitch x:Name="AwakeToggle" Header="Keep screen awake during a session" Toggled="OnAwakeToggled" />
+
+                        <ToggleSwitch x:Name="FloatingToggle" Header="Floating quick-log control" Toggled="OnFloatingToggled" />
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Focus cycle length (minutes, 0 = off)" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <NumberBox x:Name="CycleBox" Minimum="0" Maximum="180" SpinButtonPlacementMode="Inline" ValueChanged="OnCycleChanged" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Ask how it feels every (minutes, 0 = off)" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <NumberBox x:Name="PromptBox" Minimum="0" Maximum="180" SpinButtonPlacementMode="Inline" ValueChanged="OnPromptChanged" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

@@ -1,0 +1,59 @@
+<Page
+    x:Class="FlowScopeWindows.Views.HistoryPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Rectangle Fill="{ThemeResource FlowScopeBackgroundBrush}" Opacity="0.92" />
+
+        <Grid Padding="32,16,32,24" RowSpacing="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Grid.Row="0"
+                Text="History"
+                FontSize="30"
+                FontFamily="{ThemeResource FlowScopeFontFamily}"
+                Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+
+            <!-- Month strip -->
+            <Border
+                Grid.Row="1"
+                Padding="16"
+                CornerRadius="{ThemeResource FlowScopeCornerRadius}"
+                Background="{ThemeResource FlowScopeSurfaceBrush}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Button x:Name="PrevMonth" HorizontalAlignment="Left" Content="&#xE76B;" FontFamily="Segoe Fluent Icons" Click="OnPrevMonth" />
+                        <TextBlock
+                            x:Name="MonthLabel"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="17"
+                            Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+                        <Button x:Name="NextMonth" HorizontalAlignment="Right" Content="&#xE76C;" FontFamily="Segoe Fluent Icons" Click="OnNextMonth" />
+                    </Grid>
+
+                    <!-- Weekday headers + day cells are generated in code-behind. -->
+                    <GridView
+                        x:Name="DayGrid"
+                        SelectionMode="Single"
+                        SelectionChanged="OnDaySelected"
+                        IsItemClickEnabled="False" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="2" Spacing="8">
+                <TextBlock
+                    x:Name="DayHeading"
+                    FontSize="17"
+                    Foreground="{ThemeResource FlowScopeTextPrimaryBrush}" />
+                <ListView x:Name="DaySessions" SelectionMode="None" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

@@ -1,0 +1,29 @@
+<ContentDialog
+    x:Class="FlowScopeWindows.Controls.SessionSetupDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="What are you working on?"
+    PrimaryButtonText="Start Session"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="16" Width="380">
+        <TextBox
+            x:Name="NameBox"
+            Header="Session name"
+            PlaceholderText="e.g. Writing blog post" />
+
+        <TextBox
+            x:Name="CategoryBox"
+            Header="Category"
+            PlaceholderText="e.g. Work, Study, or your own..." />
+
+        <ItemsControl x:Name="CategoryChips">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </StackPanel>
+</ContentDialog>

@@ -1,0 +1,33 @@
+<Application
+    x:Class="FlowScopeWindows.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+              Placeholder values. ThemeManager.PublishResources() overwrites
+              every one of these at startup and on each theme change; they only
+              exist so the designer and first frame have something to bind to.
+            -->
+            <SolidColorBrush x:Key="FlowScopePrimaryBrush" Color="#FF6B1A" />
+            <SolidColorBrush x:Key="FlowScopeSecondaryBrush" Color="#FFC300" />
+            <SolidColorBrush x:Key="FlowScopeSurfaceBrush" Color="#2A0D05" />
+            <SolidColorBrush x:Key="FlowScopeTextPrimaryBrush" Color="White" />
+            <SolidColorBrush x:Key="FlowScopeTextSecondaryBrush" Color="#FFB088" />
+            <SolidColorBrush x:Key="FlowScopeBackgroundBrush" Color="#1A0B04" />
+            <SolidColorBrush x:Key="FlowScopeDigitBrush" Color="#FF9500" />
+            <SolidColorBrush x:Key="FlowScopeRingBrush" Color="#FF9500" />
+            <CornerRadius x:Key="FlowScopeCornerRadius">14</CornerRadius>
+            <FontFamily x:Key="FlowScopeFontFamily">Segoe UI Variable Display</FontFamily>
+
+            <!-- Shared metrics -->
+            <Thickness x:Key="CardPadding">20</Thickness>
+            <x:Double x:Key="DigitFontSize">88</x:Double>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
