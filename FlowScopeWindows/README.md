@@ -60,15 +60,34 @@ in the csproj and add a `Package.appxmanifest`.
 
 These are deliberate, not oversights:
 
-- **Background art is simplified.** The Apple app draws a bespoke `Canvas`
-  particle system per theme (embers, scanlines, lava cracks, retro grid). The
-  Windows build draws static geometry in the same colours and densities.
-  `Views/TimerPage.xaml.cs → DrawParticles()` is where that would grow.
-- **No theme emblems.** The hand-drawn per-theme emblems in
-  `ThemeEmblems.swift` have no Windows equivalent yet; the theme grid shows
-  gradient swatches.
+- **Background art is a simplified, retained-tree approximation, not the
+  immediate-mode Canvas art.** `Controls/ParticleField.cs` now drives real
+  per-frame motion (`CompositionTarget.Rendering`) with a distinct pool/motion
+  pattern per `ParticleStyle` (drifting embers, pulsing cracks, drifting
+  speckle, a scrolling retro grid, a flickering scanline band) instead of the
+  one-shot static geometry the port originally shipped with. It still isn't
+  the bespoke shader-like Canvas rendering `ThemeParticles.swift` does on
+  Apple — fewer particles, simpler per-particle math — but it now actually
+  moves and differs by theme.
+- **Theme emblems exist and are used in two places.** `Theme/ThemeEmblems.cs`
+  is a complete, hand-ported vector emblem system (Superman, Batman,
+  Nightwing, Deathstroke, Red Hood) with an animated edge-light while a
+  session runs. It's used in the timer ring (`TimerPage`) and now also in the
+  Appearance theme picker (`AppearancePage.BuildThemeGrid()`), layered over
+  the gradient swatch for the five character themes. It deliberately skips
+  the Apple build's struck-metal wear texture (mottling/scratches) — cheap on
+  an immediate-mode Canvas, expensive in XAML's retained tree.
+- **Theme customization exists.** `Theme/ThemeCustomization.cs` ports
+  `ThemeCustomization.swift`'s hue/saturation/brightness delta + explicit hex
+  overrides for Primary/Secondary/Background, exposed via sliders and hex
+  fields on the Appearance page. Each theme remembers its own adjustment
+  (`ThemeCustomizationStore`, keyed by theme id) the same way the base theme
+  choice already persists.
 - **No widgets or Live Activities.** There is no Windows counterpart to the
   Home Screen widget or the Dynamic Island. Windows widgets would be a
   separate host app.
-- **No per-theme customisation UI.** The hue/saturation/brightness overrides
-  from `ThemeCustomization.swift` are not exposed yet.
+- **Not yet run through a compiler.** The additions above were written and
+  reviewed on a Mac against the Windows App SDK 1.6 API surface from
+  documentation, the same constraint the rest of this port was written under
+  — they have the same "should compile, unverified" status as everything
+  else in this file until the first `dotnet build` on Windows.

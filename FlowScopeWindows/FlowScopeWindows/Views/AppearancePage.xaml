@@ -26,6 +26,55 @@
                     SelectionChanged="OnThemeSelected" />
 
                 <TextBlock
+                    Text="Customize"
+                    FontSize="17"
+                    Margin="0,8,0,0"
+                    Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+
+                <Border Padding="20" CornerRadius="{ThemeResource FlowScopeCornerRadius}" Background="{ThemeResource FlowScopeSurfaceBrush}">
+                    <StackPanel Spacing="18">
+                        <TextBlock
+                            Text="Recolours the selected theme without losing its identity. Each theme remembers its own adjustment."
+                            FontSize="12"
+                            TextWrapping="Wrap"
+                            Opacity="0.75"
+                            Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Hue" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <Slider x:Name="HueSlider" Minimum="-180" Maximum="180" StepFrequency="1" ValueChanged="OnCustomizationChanged" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Saturation" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <Slider x:Name="SaturationSlider" Minimum="-100" Maximum="100" StepFrequency="1" ValueChanged="OnCustomizationChanged" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Brightness" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                            <Slider x:Name="BrightnessSlider" Minimum="-100" Maximum="100" StepFrequency="1" ValueChanged="OnCustomizationChanged" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <StackPanel Spacing="6" Width="140">
+                                <TextBlock Text="Primary hex" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                                <TextBox x:Name="PrimaryHexBox" PlaceholderText="#RRGGBB" LostFocus="OnHexBoxLostFocus" />
+                            </StackPanel>
+                            <StackPanel Spacing="6" Width="140">
+                                <TextBlock Text="Secondary hex" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                                <TextBox x:Name="SecondaryHexBox" PlaceholderText="#RRGGBB" LostFocus="OnHexBoxLostFocus" />
+                            </StackPanel>
+                            <StackPanel Spacing="6" Width="140">
+                                <TextBlock Text="Background hex" Foreground="{ThemeResource FlowScopeTextSecondaryBrush}" />
+                                <TextBox x:Name="BackgroundHexBox" PlaceholderText="#RRGGBB" LostFocus="OnHexBoxLostFocus" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Content="Reset this theme" Click="OnResetCustomization" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock
                     Text="Session"
                     FontSize="17"
                     Margin="0,8,0,0"

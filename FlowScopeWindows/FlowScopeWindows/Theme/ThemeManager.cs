@@ -15,8 +15,13 @@ public sealed class ThemeManager : Observable
 
     private ThemeManager()
     {
-        _configuration = ThemeProvider.For(AppSettings.Shared.Theme);
+        _baseTheme = AppSettings.Shared.Theme;
+        _customization = ThemeCustomizationStore.Shared.Get(_baseTheme);
+        _configuration = ThemeProvider.For(_baseTheme).Applying(_customization);
     }
+
+    private AppTheme _baseTheme;
+    private ThemeCustomizationState _customization;
 
     private ThemeConfiguration _configuration;
     public ThemeConfiguration Configuration
@@ -40,10 +45,32 @@ public sealed class ThemeManager : Observable
 
     public AppTheme Current => Configuration.Theme;
 
+    /// <summary>The active theme's saved recolouring, so a settings page can seed its sliders.</summary>
+    public ThemeCustomizationState CurrentCustomization => _customization;
+
     public void Apply(AppTheme theme)
     {
         AppSettings.Shared.Theme = theme;
-        Configuration = ThemeProvider.For(theme);
+        _baseTheme = theme;
+        _customization = ThemeCustomizationStore.Shared.Get(theme);
+        Recompute();
+    }
+
+    /// <summary>
+    /// Applies a new hue/saturation/brightness + hex-override state to the
+    /// *current* theme and persists it, so recolouring one theme never bleeds
+    /// into another.
+    /// </summary>
+    public void ApplyCustomization(ThemeCustomizationState state)
+    {
+        _customization = state;
+        ThemeCustomizationStore.Shared.Set(_baseTheme, state);
+        Recompute();
+    }
+
+    private void Recompute()
+    {
+        Configuration = ThemeProvider.For(_baseTheme).Applying(_customization);
         PublishResources();
     }
 

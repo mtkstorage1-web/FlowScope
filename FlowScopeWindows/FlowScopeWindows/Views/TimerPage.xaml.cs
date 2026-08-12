@@ -21,6 +21,14 @@ public sealed partial class TimerPage : Page
     private const double RingSize = 320;
     private const double RingInset = 10;
 
+    /// <summary>Matches the 172pt emblem the iOS and Android timers draw.</summary>
+    private const double EmblemSize = 172;
+
+    /// <summary>Redrawn only when it would actually change, not every tick.</summary>
+    private (AppTheme Theme, bool Active, bool Running)? _emblemState;
+
+    private ParticleField? _particles;
+
     public TimerPage()
     {
         InitializeComponent();
@@ -34,6 +42,7 @@ public sealed partial class TimerPage : Page
             _session.PropertyChanged -= OnSessionChanged;
             _session.CycleCompleted -= OnCycleCompleted;
             _session.MoodPromptDue -= OnMoodPromptDue;
+            _particles?.Stop();
         };
     }
 
@@ -41,7 +50,17 @@ public sealed partial class TimerPage : Page
     {
         base.OnNavigatedTo(e);
         DrawParticles();
+        // Force a rebuild: the theme may have changed while we were away.
+        _emblemState = null;
+        DrawEmblem();
         Sync();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        // Stop the per-frame Rendering subscription while the page isn't visible.
+        _particles?.Stop();
     }
 
     // MARK: - State → UI
@@ -69,6 +88,7 @@ public sealed partial class TimerPage : Page
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        DrawEmblem();
         UpdateRing();
     }
 
@@ -229,61 +249,39 @@ public sealed partial class TimerPage : Page
     // MARK: - Background field
 
     /// <summary>
-    /// A lightweight stand-in for the per-theme Canvas art on Apple platforms:
-    /// same colours and density, drawn once as static geometry.
+    /// Rebuilds the chest emblem for the active theme. Cheap enough to redo on
+    /// every state change, and rebuilding is what restarts the edge-light
+    /// animation when a session starts.
+    /// </summary>
+    private void DrawEmblem()
+    {
+        var config = ThemeManager.Shared.Configuration;
+        var state = (config.Theme, _session.IsActive, _session.IsRunning);
+
+        // Sync() runs on every tick; rebuilding the tree each second would
+        // restart the edge-light animation and churn a few dozen shapes.
+        if (_emblemState == state) return;
+        _emblemState = state;
+
+        // The emblem only steps back when something is drawn on top of it.
+        var strength = _session.IsActive ? 0.34 : 0.95;
+
+        EmblemHost.Content = ThemeEmblems.Build(
+            config,
+            size: EmblemSize,
+            strength: strength,
+            isLive: _session.IsRunning);
+    }
+
+    /// <summary>
+    /// The animated background field behind the timer — a per-theme, per-frame
+    /// motion pool (see <see cref="ParticleField"/>), the retained-tree
+    /// analogue of the per-theme Canvas art on Apple platforms.
     /// </summary>
     private void DrawParticles()
     {
-        ParticleCanvas.Children.Clear();
         var config = ThemeManager.Shared.Configuration;
-        var random = new Random(config.Theme.GetHashCode());
-
-        switch (config.Particles)
-        {
-            case ParticleStyle.RetroGrid:
-                for (var i = 0; i < 24; i++)
-                {
-                    ParticleCanvas.Children.Add(new Line
-                    {
-                        X1 = 0, Y1 = 220 + i * 26,
-                        X2 = 2000, Y2 = 220 + i * 26,
-                        Stroke = ThemeManager.Shared.PrimaryBrush,
-                        StrokeThickness = 1,
-                        Opacity = 0.10,
-                    });
-                }
-                break;
-
-            case ParticleStyle.Scanlines:
-                for (var i = 0; i < 90; i++)
-                {
-                    ParticleCanvas.Children.Add(new Line
-                    {
-                        X1 = 0, Y1 = i * 10,
-                        X2 = 2000, Y2 = i * 10,
-                        Stroke = ThemeManager.Shared.PrimaryBrush,
-                        StrokeThickness = 1,
-                        Opacity = 0.06,
-                    });
-                }
-                break;
-
-            default:
-                // Embers / carbon speckle for every other theme.
-                for (var i = 0; i < 70; i++)
-                {
-                    var dot = new Ellipse
-                    {
-                        Width = random.Next(2, 6),
-                        Height = random.Next(2, 6),
-                        Fill = ThemeManager.Shared.PrimaryBrush,
-                        Opacity = 0.05 + random.NextDouble() * 0.15,
-                    };
-                    Canvas.SetLeft(dot, random.Next(0, 1400));
-                    Canvas.SetTop(dot, random.Next(0, 900));
-                    ParticleCanvas.Children.Add(dot);
-                }
-                break;
-        }
+        _particles ??= new ParticleField(ParticleCanvas, config.Theme.GetHashCode());
+        _particles.Start(config);
     }
 }

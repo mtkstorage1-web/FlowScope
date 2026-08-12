@@ -140,6 +140,7 @@ public static class ThemeProvider
         RingColors = new[] { Hex("#1E5BFF"), Hex("#E63030"), Hex("#F5C518"), Hex("#1E5BFF") },
         Glow = Hex("#1E5BFF"),
         Particles = ParticleStyle.Carbon,
+        Emblem = ThemeEmblem.Superman,
     };
 
     // MARK: 6. Batman
@@ -161,6 +162,7 @@ public static class ThemeProvider
         RingColors = new[] { Hex("#FFDF00") },
         Glow = Hex("#FFDF00"),
         Particles = ParticleStyle.Carbon,
+        Emblem = ThemeEmblem.Batman,
     };
 
     // MARK: 7. Nightwing
@@ -182,6 +184,7 @@ public static class ThemeProvider
         RingColors = new[] { Hex("#1E90FF"), Hex("#7FDBFF") },
         Glow = Hex("#1E90FF"),
         Particles = ParticleStyle.Carbon,
+        Emblem = ThemeEmblem.Nightwing,
     };
 
     // MARK: 8. Deathstroke
@@ -203,6 +206,7 @@ public static class ThemeProvider
         RingColors = new[] { Hex("#F26A21") },
         Glow = Hex("#F26A21"),
         Particles = ParticleStyle.Carbon,
+        Emblem = ThemeEmblem.Deathstroke,
     };
 
     // MARK: 9. Red Hood
@@ -224,6 +228,7 @@ public static class ThemeProvider
         RingColors = new[] { Hex("#C8102E"), Hex("#FF4D4D") },
         Glow = Hex("#C8102E"),
         Particles = ParticleStyle.Carbon,
+        Emblem = ThemeEmblem.RedHood,
     };
 
     /// <summary>Parses "#RRGGBB" or "#AARRGGBB".</summary>

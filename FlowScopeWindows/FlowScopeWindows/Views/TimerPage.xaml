@@ -51,6 +51,17 @@
                         Stroke="{ThemeResource FlowScopeRingBrush}" />
                 </Canvas>
 
+                <!--
+                    Character themes fill the ring with their emblem. It drops
+                    back to a watermark once a session starts so the readout on
+                    top of it stays legible.
+                -->
+                <ContentPresenter
+                    x:Name="EmblemHost"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False" />
+
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
                     <TextBlock
                         x:Name="ElapsedText"

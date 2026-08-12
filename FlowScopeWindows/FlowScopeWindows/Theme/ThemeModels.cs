@@ -84,6 +84,24 @@ public sealed record ThemeConfiguration
 
     /// <summary>Which animated background the timer page draws.</summary>
     public required ParticleStyle Particles { get; init; }
+
+    /// <summary>
+    /// Chest emblem drawn inside the timer ring. Null for the abstract themes.
+    /// </summary>
+    public ThemeEmblem? Emblem { get; init; }
+}
+
+/// <summary>
+/// Chest emblems drawn inside the timer ring. The geometry lives in
+/// <see cref="ThemeEmblems"/>, ported from ThemeEmblems.swift.
+/// </summary>
+public enum ThemeEmblem
+{
+    Superman,
+    Batman,
+    Nightwing,
+    Deathstroke,
+    RedHood,
 }
 
 /// <summary>
